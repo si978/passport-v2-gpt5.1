@@ -1,0 +1,40 @@
+services:
+  # 用于“可上线级验收”的短信 stub：不外发短信，捕获验证码供自动化 smoke 使用。
+  sms-stub:
+    image: node:20-alpine
+    restart: unless-stopped
+    working_dir: /srv
+    command: ["node", "server.js"]
+    volumes:
+      - ./sms-stub:/srv:ro
+    ports:
+      - "18080:18080"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://127.0.0.1:18080/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1));\"",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+    networks:
+      - passport-net
+
+  backend:
+    # 强制走 HttpSmsGateway，避免误触发真实短信外发
+    environment:
+      SMS_GATEWAY_URL: http://sms-stub:18080/send
+      SMS_GATEWAY_KEY: ""
+      ALIYUN_ACCESS_KEY_ID: ""
+      ALIYUN_ACCESS_KEY_SECRET: ""
+      ALIYUN_SMS_SIGN_NAME: ""
+      ALIYUN_SMS_TEMPLATE_CODE: ""
+      ALI_SMS_ACCESS_KEY_ID: ""
+      ALI_SMS_ACCESS_KEY_SECRET: ""
+      ALI_SMS_SIGN_NAME: ""
+      ALI_SMS_TEMPLATE_CODE: ""
+    depends_on:
+      sms-stub:
+        condition: service_healthy

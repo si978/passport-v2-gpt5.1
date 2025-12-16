@@ -1,0 +1,24 @@
+{
+  "name": "passport-v2-gpt5.1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test:backend": "npm test --prefix ./dev/backend-node -- --coverage",
+    "test:python": "python -m unittest discover -s dev/tests -p \"test_*.py\"",
+    "test:frontend": "npm test --prefix ./dev/frontend-react",
+    "test:e2e": "npm run test:e2e --prefix ./dev/frontend-react -- --project=chromium",
+    "build:frontend": "npm run build --prefix ./dev/frontend-react",
+    "demo:shell": "node ./dev/shell/ipc_stdio_demo.js",
+    "smoke:sms": "node ./dev/backend-node/scripts/sms_login_smoke.js",
+    "deploy:smoke": "pwsh -NoProfile -File ./deploy/smoke.ps1",
+    "build:shell:exe": "pwsh -NoProfile -File ./deploy/build-shell-gui.ps1",
+    "build:clients:exe": "pwsh -NoProfile -File ./deploy/build-shell-clients.ps1",
+    "check:all": "npm run test:backend && npm run test:python && npm run test:frontend && npm run build:frontend && npm run test:e2e",
+    "test": "npm run check:all"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

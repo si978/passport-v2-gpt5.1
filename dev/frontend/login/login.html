@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Passport 登录</title>
+  </head>
+  <body>
+    <main>
+      <h1>手机号登录 / 注册</h1>
+      <form id="login-form">
+        <label>
+          手机号：<input id="phone" type="tel" placeholder="请输入手机号" />
+        </label>
+        <br />
+        <label>
+          验证码：<input id="code" type="text" placeholder="6 位数字" />
+        </label>
+        <button id="send-code" type="button">获取验证码</button>
+        <br />
+        <label>
+          <input id="agree" type="checkbox" /> 已阅读并同意用户协议
+        </label>
+        <br />
+        <button id="login" type="submit">登录</button>
+      </form>
+      <div id="message"></div>
+    </main>
+    <script src="login.js"></script>
+  </body>
+  </html>

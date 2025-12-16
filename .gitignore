@@ -1,0 +1,19 @@
+# Secrets / env files
+**/.env
+!dev/backend-node/.env.example
+!sms-config/.env.example
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node
+**/node_modules/
+**/dist/
+**/build/
+**/coverage/
+*.spec
