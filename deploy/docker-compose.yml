@@ -139,7 +139,8 @@ services:
     ports:
       - "${ADMIN_PORT:-18081}:80"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      # When basic auth is enabled on `/`, check backend health via `/api/health` (auth_basic off).
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/api/health >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30
