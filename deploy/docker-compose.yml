@@ -3,24 +3,32 @@ services:
     image: postgres:15
     restart: unless-stopped
     environment:
-      POSTGRES_DB: passport
-      POSTGRES_USER: passport
-      POSTGRES_PASSWORD: passport
+      POSTGRES_DB: ${POSTGRES_DB:-passport}
+      POSTGRES_USER: ${POSTGRES_USER:-passport}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-passport}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./sql/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U passport -d passport"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-passport} -d ${POSTGRES_DB:-passport}"]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 10s
     networks:
       - passport-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -28,6 +36,11 @@ services:
       retries: 20
     networks:
       - passport-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     build:
@@ -37,13 +50,21 @@ services:
     env_file:
       - ../sms-config/.env
     environment:
+      NODE_ENV: production
       PORT: 3000
+      TRUST_PROXY: 1
+      ENABLE_SWAGGER: 0
+      ADMIN_AUTH_MODE: strict
+      ADMIN_APP_ID: ${ADMIN_APP_ID:-admin}
+      ADMIN_ROLE_MAP: ${ADMIN_ROLE_MAP:-}
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USER: passport
-      DB_PASSWORD: passport
-      DB_NAME: passport
+      DB_USER: ${POSTGRES_USER:-passport}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-passport}
+      DB_NAME: ${POSTGRES_DB:-passport}
       REDIS_URL: redis://redis:6379
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      # Metrics: in production `/api/metrics` is private-IP only unless METRICS_TOKEN is set (recommend set in deploy/.env).
       # 如需接入真实短信网关（自建 HTTP 网关），取消注释并填写：
       # SMS_GATEWAY_URL: https://sms.example.com/send
       # SMS_GATEWAY_KEY: your-api-key
@@ -70,6 +91,11 @@ services:
       start_period: 10s
     networks:
       - passport-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     build:
@@ -80,7 +106,7 @@ services:
       backend:
         condition: service_healthy
     ports:
-      - "8080:80"
+      - "${HTTP_PORT:-8080}:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -89,9 +115,46 @@ services:
       start_period: 10s
     networks:
       - passport-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  admin-frontend:
+    build:
+      context: ../dev/frontend-react
+      dockerfile: Dockerfile.admin
+      args:
+        VITE_APP_ID: ${ADMIN_APP_ID:-admin}
+    restart: unless-stopped
+    environment:
+      # Optional: avoid IP allowlist by enabling basic auth on admin portal.
+      # When both are set, Nginx will require basic auth for UI pages (API still uses Bearer tokens).
+      ADMIN_BASIC_USER: ${ADMIN_BASIC_USER:-}
+      ADMIN_BASIC_PASS: ${ADMIN_BASIC_PASS:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${ADMIN_PORT:-18081}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    networks:
+      - passport-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   passport-net:
 
 volumes:
   postgres-data:
+  redis-data:

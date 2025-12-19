@@ -16,6 +16,15 @@ function addHours(d: Date, hours: number): Date {
   return new Date(d.getTime() + hours * 3600 * 1000);
 }
 
+export type VerifiedAccessTokenClaims = {
+  guid: string;
+  app_id: string;
+  expires_at: string;
+  roles: string[];
+  user_type: string;
+  account_source: string;
+};
+
 @Injectable()
 export class TokenService {
   constructor(
@@ -148,6 +157,11 @@ export class TokenService {
   }
 
   async verifyAccessToken(dto: VerifyTokenDto): Promise<{ guid: string; app_id: string; expires_at: string }> {
+    const v = await this.verifyAccessTokenWithClaims(dto);
+    return { guid: v.guid, app_id: v.app_id, expires_at: v.expires_at };
+  }
+
+  async verifyAccessTokenWithClaims(dto: VerifyTokenDto): Promise<VerifiedAccessTokenClaims> {
     const now = new Date();
     try {
       const session = await this.sessions.findByAccessToken(dto.access_token);
@@ -155,28 +169,40 @@ export class TokenService {
         throw new AuthException(AuthErrorCode.ERR_ACCESS_INVALID, 'invalid access token');
       }
 
-      let foundAppId: string | null = null;
+      const apps = session.apps ?? ({} as any);
+      let matchedAppId: string | null = null;
       let appSession: AppSession | null = null;
-      for (const [appId, s] of Object.entries(session.apps)) {
-        if (s.accessToken === dto.access_token) {
-          foundAppId = appId;
-          appSession = s;
+      for (const [appId, s] of Object.entries(apps)) {
+        if (s && (s as AppSession).accessToken === dto.access_token) {
+          matchedAppId = appId;
+          appSession = s as AppSession;
           break;
         }
       }
-      if (!foundAppId || !appSession) {
+      if (!matchedAppId || !appSession) {
         throw new AuthException(AuthErrorCode.ERR_ACCESS_INVALID, 'invalid access token');
       }
 
       if (new Date(appSession.accessTokenExpiresAt) <= now) {
         throw new AuthException(AuthErrorCode.ERR_ACCESS_EXPIRED, 'access expired');
       }
-      if (foundAppId !== dto.app_id) {
+      if (matchedAppId !== dto.app_id) {
         throw new AuthException(AuthErrorCode.ERR_APP_ID_MISMATCH, 'app id mismatch');
       }
 
-      this.logger.log(`verifyAccessToken success for guid=${session.guid}, app_id=${foundAppId}`);
-      return { guid: session.guid, app_id: foundAppId, expires_at: appSession.accessTokenExpiresAt };
+      const roles = session.roles ?? resolveAdminRoles(session.userType);
+      const userTypeLabel = resolveUserTypeLabel(session.userType);
+      const accountSource = session.accountSource ?? 'phone';
+
+      this.logger.log(`verifyAccessToken success for guid=${session.guid}, app_id=${matchedAppId}`);
+      return {
+        guid: session.guid,
+        app_id: matchedAppId,
+        expires_at: appSession.accessTokenExpiresAt,
+        roles,
+        user_type: userTypeLabel,
+        account_source: accountSource,
+      };
     } catch (e) {
       if (e instanceof AuthException) {
         this.logger.warn(`verifyAccessToken failed for app_id=${dto.app_id}, code=${e.code}`);

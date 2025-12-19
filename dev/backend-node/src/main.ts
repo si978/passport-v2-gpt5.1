@@ -6,6 +6,17 @@ import { AuthExceptionFilter } from './auth/auth-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  const trustProxyRaw = (process.env.TRUST_PROXY ?? '').trim();
+  if (trustProxyRaw) {
+    const lower = trustProxyRaw.toLowerCase();
+    let trustProxy: any = trustProxyRaw;
+    if (lower === 'true') trustProxy = true;
+    if (lower === 'false') trustProxy = false;
+    if (/^\d+$/.test(trustProxyRaw)) trustProxy = parseInt(trustProxyRaw, 10);
+    app.set('trust proxy', trustProxy);
+  }
+
   app.enableShutdownHooks();
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));

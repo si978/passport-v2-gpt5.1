@@ -45,7 +45,7 @@ export class AuthService {
 
   async loginByPhone(dto: LoginByPhoneDto): Promise<LoginResponseDto> {
     const now = new Date();
-    this.vcService.validateCode(dto.phone, dto.code, now);
+    await this.vcService.validateCode(dto.phone, dto.code, now);
 
     let user = await this.users.findOne({ where: { phone: dto.phone } });
 

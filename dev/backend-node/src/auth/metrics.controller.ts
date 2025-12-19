@@ -1,6 +1,7 @@
-import { Controller, Get, Header } from '@nestjs/common';
+import { Controller, Get, Header, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { MetricsService } from './metrics.service';
+import { MetricsGuard } from './metrics.guard';
 
 function toPrometheus(metrics: ReturnType<MetricsService['snapshot']>): string {
   const lines: string[] = [
@@ -28,6 +29,7 @@ function toPrometheus(metrics: ReturnType<MetricsService['snapshot']>): string {
 
 @ApiTags('metrics')
 @Controller('metrics')
+@UseGuards(MetricsGuard)
 export class MetricsController {
   constructor(private readonly metrics: MetricsService) {}
 

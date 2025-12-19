@@ -14,7 +14,7 @@
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
-    "@nestjs/swagger": "^7.3.1",
+    "@nestjs/swagger": "^7.4.2",
     "@nestjs/typeorm": "^10.0.0",
     "@alicloud/pop-core": "^1.7.13",
     "axios": "^1.13.2",
@@ -26,6 +26,20 @@
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",
     "typeorm": "^0.3.20"
+  },
+  "overrides": {
+    "@nestjs/cli": {
+      "glob": "10.5.0"
+    },
+    "@nestjs/swagger": {
+      "js-yaml": "4.1.1"
+    },
+    "external-editor": {
+      "tmp": "0.2.5"
+    },
+    "typeorm": {
+      "glob": "10.5.0"
+    }
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

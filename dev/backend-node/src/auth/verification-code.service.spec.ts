@@ -1,57 +1,63 @@
 import { AuthErrorCode, AuthException } from './auth-error';
 import { VerificationCodeService } from './verification-code.service';
 import type { SmsGateway } from './sms-gateway';
+import { FakeRedis } from './test-utils/fake-redis';
 
 describe('VerificationCodeService', () => {
   const gateway: SmsGateway = {
     sendVerificationCode: jest.fn(async () => {}),
   };
 
-  it('saveCode + validateCode should accept correct code and reject wrong code', () => {
-    const svc = new VerificationCodeService(gateway);
+  beforeEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('saveCode + validateCode should accept correct code and reject wrong code', async () => {
+    const svc = new VerificationCodeService(gateway, new FakeRedis() as any);
     const phone = '13800138000';
     const code = '123456';
-    svc.saveCode(phone, code, 60);
+    await svc.saveCode(phone, code, 60);
 
     // 正确验证码应通过
-    expect(() => svc.validateCode(phone, code)).not.toThrow();
+    await expect(svc.validateCode(phone, code)).resolves.toBeUndefined();
 
     // 错误验证码应抛 ERR_CODE_INVALID
-    expect(() => svc.validateCode(phone, '000000')).toThrowError(
-      expect.objectContaining({ code: AuthErrorCode.ERR_CODE_INVALID } as Partial<AuthException>),
-    );
+    await expect(svc.validateCode(phone, '000000')).rejects.toMatchObject({
+      code: AuthErrorCode.ERR_CODE_INVALID,
+    } as Partial<AuthException>);
   });
 
   it('sendCode should reject invalid phone format', async () => {
-    const svc = new VerificationCodeService(gateway);
+    const svc = new VerificationCodeService(gateway, new FakeRedis() as any);
     await expect(svc.sendCode('12345')).rejects.toMatchObject({
       code: AuthErrorCode.ERR_PHONE_INVALID,
     } as Partial<AuthException>);
   });
 
-  it('validateCode should throw ERR_PHONE_INVALID when no record exists', () => {
-    const svc = new VerificationCodeService(gateway);
+  it('validateCode should throw ERR_PHONE_INVALID when no record exists', async () => {
+    const svc = new VerificationCodeService(gateway, new FakeRedis() as any);
     const phone = '13800138000';
-    expect(() => svc.validateCode(phone, '123456')).toThrowError(
-      expect.objectContaining({ code: AuthErrorCode.ERR_PHONE_INVALID } as Partial<AuthException>),
-    );
+    await expect(svc.validateCode(phone, '123456')).rejects.toMatchObject({
+      code: AuthErrorCode.ERR_PHONE_INVALID,
+    } as Partial<AuthException>);
   });
 
-  it('validateCode should throw ERR_CODE_EXPIRED when code is expired', () => {
-    const svc = new VerificationCodeService(gateway);
+  it('validateCode should throw ERR_CODE_EXPIRED when code is expired', async () => {
+    const svc = new VerificationCodeService(gateway, new FakeRedis() as any);
     const phone = '13800138000';
     const code = '123456';
     // ttlSeconds = 0 使得立刻过期
-    svc.saveCode(phone, code, 0);
+    const now = new Date(Date.now());
+    await svc.saveCode(phone, code, 0, now);
 
-    const future = new Date(Date.now() + 1000);
-    expect(() => svc.validateCode(phone, code, future)).toThrowError(
-      expect.objectContaining({ code: AuthErrorCode.ERR_CODE_EXPIRED } as Partial<AuthException>),
-    );
+    const future = new Date(now.getTime() + 1000);
+    await expect(svc.validateCode(phone, code, future)).rejects.toMatchObject({
+      code: AuthErrorCode.ERR_CODE_EXPIRED,
+    } as Partial<AuthException>);
   });
 
   it('sendCode should enforce frequency limit per phone', async () => {
-    const svc = new VerificationCodeService(gateway);
+    const svc = new VerificationCodeService(gateway, new FakeRedis() as any);
     const phone = '13800138000';
     await expect(svc.sendCode(phone)).resolves.toBeUndefined();
     await expect(svc.sendCode(phone)).rejects.toMatchObject({
@@ -60,13 +66,14 @@ describe('VerificationCodeService', () => {
   });
 
   it('sendCode should enforce daily max per phone', async () => {
-    const svc = new VerificationCodeService(gateway);
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2025-01-01T12:00:00Z'));
+    const svc = new VerificationCodeService(gateway, new FakeRedis() as any);
     const phone = '13800138001';
 
     for (let i = 0; i < 10; i += 1) {
       await expect(svc.sendCode(phone)).resolves.toBeUndefined();
-      // 调整 lastSentAt 使下一次调用不受 60 秒限制影响
-      (svc as any).lastSentAt.set(phone, new Date(Date.now() - 61 * 1000));
+      jest.advanceTimersByTime(61 * 1000);
     }
 
     await expect(svc.sendCode(phone)).rejects.toMatchObject({
@@ -75,7 +82,7 @@ describe('VerificationCodeService', () => {
   });
 
   it('sendCode should enforce basic per-ip window limit when ip provided', async () => {
-    const svc = new VerificationCodeService(gateway);
+    const svc = new VerificationCodeService(gateway, new FakeRedis() as any);
     const ip = '9.9.9.9';
 
     for (let i = 0; i < 30; i += 1) {

@@ -40,7 +40,7 @@ export class AuthController {
   @ApiOkResponse({ type: LoginResponseDto })
   async loginByPhone(@Body() dto: LoginByPhoneDto, @Req() req: any): Promise<LoginResponseDto> {
     try {
-      this.rateLimit.ensureLoginAllowed(req?.ip, dto.phone);
+      await this.rateLimit.ensureLoginAllowed(req?.ip, dto.phone);
       const res = await this.authService.loginByPhone(dto);
       this.metrics.incLoginSuccess();
       this.audit.recordLogin(res.guid, dto.phone);
@@ -87,7 +87,7 @@ export class AuthController {
     @Req() req: any,
   ): Promise<LoginResponseDto> {
     try {
-      this.rateLimit.ensureRefreshAllowed(req?.ip, guid);
+      await this.rateLimit.ensureRefreshAllowed(req?.ip, guid);
       return await this.tokenService.refreshAccessToken(guid, dto);
     } catch (e) {
       if (e instanceof AuthException) {
@@ -110,7 +110,7 @@ export class AuthController {
     @Req() req: any,
   ): Promise<LoginResponseDto> {
     try {
-      this.rateLimit.ensureRefreshAllowed(req?.ip, dto.guid);
+      await this.rateLimit.ensureRefreshAllowed(req?.ip, dto.guid);
       return await this.tokenService.refreshAccessToken(dto.guid, dto);
     } catch (e) {
       if (e instanceof AuthException) {

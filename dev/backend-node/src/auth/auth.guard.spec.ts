@@ -5,7 +5,7 @@ import { AuthException, AuthErrorCode } from './auth-error';
 
 describe('AuthGuard', () => {
   const mockTokenService = {
-    verifyAccessToken: jest.fn(),
+    verifyAccessTokenWithClaims: jest.fn(),
   } as unknown as TokenService;
 
   const guard = new AuthGuard(mockTokenService);
@@ -22,11 +22,18 @@ describe('AuthGuard', () => {
   });
 
   it('allows request when token is valid', async () => {
-    (mockTokenService.verifyAccessToken as jest.Mock).mockResolvedValue({ guid: 'G1', app_id: 'jiuweihu' });
+    (mockTokenService.verifyAccessTokenWithClaims as jest.Mock).mockResolvedValue({
+      guid: 'G1',
+      app_id: 'jiuweihu',
+      expires_at: new Date().toISOString(),
+      roles: ['OPERATOR'],
+      user_type: 'admin',
+      account_source: 'phone',
+    });
     const ctx = createContext({ authorization: 'Bearer A.G1.token', 'x-app-id': 'jiuweihu' });
 
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
-    expect(mockTokenService.verifyAccessToken).toHaveBeenCalledWith({
+    expect(mockTokenService.verifyAccessTokenWithClaims).toHaveBeenCalledWith({
       access_token: 'A.G1.token',
       app_id: 'jiuweihu',
     });
@@ -38,7 +45,7 @@ describe('AuthGuard', () => {
   });
 
   it('rethrows AuthException from TokenService', async () => {
-    (mockTokenService.verifyAccessToken as jest.Mock).mockRejectedValue(
+    (mockTokenService.verifyAccessTokenWithClaims as jest.Mock).mockRejectedValue(
       new AuthException(AuthErrorCode.ERR_ACCESS_INVALID, 'invalid'),
     );
     const ctx = createContext({ authorization: 'Bearer A.bad', 'x-app-id': 'jiuweihu' });

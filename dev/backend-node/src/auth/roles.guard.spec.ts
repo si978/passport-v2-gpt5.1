@@ -13,6 +13,10 @@ describe('RolesGuard', () => {
     } as unknown as ExecutionContext;
   };
 
+  beforeEach(() => {
+    delete process.env.ADMIN_AUTH_MODE;
+  });
+
   it('allows access when no @Roles metadata is defined', () => {
     const reflector = {
       getAllAndOverride: jest.fn().mockReturnValue(undefined),
@@ -23,43 +27,54 @@ describe('RolesGuard', () => {
     expect(guard.canActivate(ctx)).toBe(true);
   });
 
-  it('allows access in compatibility mode when role is missing', () => {
+  it('denies access in strict mode when roles are missing', () => {
     const reflector = {
       getAllAndOverride: jest.fn().mockReturnValue([AdminRole.OPERATOR]),
     } as unknown as Reflector;
     const guard = new RolesGuard(reflector);
 
     const ctx = createContext();
-    expect(guard.canActivate(ctx)).toBe(true);
-  });
-
-  it('allows access when role matches required roles', () => {
-    const reflector = {
-      getAllAndOverride: jest.fn().mockImplementation((key: string) => {
-        if (key === ROLES_KEY) {
-          return [AdminRole.OPERATOR];
-        }
-        return undefined;
-      }),
-    } as unknown as Reflector;
-    const guard = new RolesGuard(reflector);
-
-    const ctx = createContext({ 'x-admin-role': AdminRole.OPERATOR });
-    expect(guard.canActivate(ctx)).toBe(true);
-  });
-
-  it('denies access when role does not match required roles', () => {
-    const reflector = {
-      getAllAndOverride: jest.fn().mockImplementation((key: string) => {
-        if (key === ROLES_KEY) {
-          return [AdminRole.OPERATOR];
-        }
-        return undefined;
-      }),
-    } as unknown as Reflector;
-    const guard = new RolesGuard(reflector);
-
-    const ctx = createContext({ 'x-admin-role': AdminRole.SUPPORT });
     expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
+  });
+
+  it('allows access in strict mode when roles match required roles', () => {
+    const reflector = {
+      getAllAndOverride: jest.fn().mockImplementation((key: string) => {
+        if (key === ROLES_KEY) {
+          return [AdminRole.OPERATOR];
+        }
+        return undefined;
+      }),
+    } as unknown as Reflector;
+    const guard = new RolesGuard(reflector);
+
+    const ctx = createContext({}, { roles: [AdminRole.OPERATOR] });
+    expect(guard.canActivate(ctx)).toBe(true);
+  });
+
+  it('denies access in strict mode when roles do not match required roles', () => {
+    const reflector = {
+      getAllAndOverride: jest.fn().mockImplementation((key: string) => {
+        if (key === ROLES_KEY) {
+          return [AdminRole.OPERATOR];
+        }
+        return undefined;
+      }),
+    } as unknown as Reflector;
+    const guard = new RolesGuard(reflector);
+
+    const ctx = createContext({}, { roles: [AdminRole.SUPPORT] });
+    expect(() => guard.canActivate(ctx)).toThrow(ForbiddenException);
+  });
+
+  it('allows access in legacy mode when any admin role exists', () => {
+    process.env.ADMIN_AUTH_MODE = 'legacy';
+    const reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue([AdminRole.OPERATOR]),
+    } as unknown as Reflector;
+    const guard = new RolesGuard(reflector);
+
+    const ctx = createContext({}, { roles: [AdminRole.SUPPORT] });
+    expect(guard.canActivate(ctx)).toBe(true);
   });
 });

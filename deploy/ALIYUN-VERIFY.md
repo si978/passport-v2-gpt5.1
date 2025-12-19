@@ -7,7 +7,9 @@
 ### 1) 部署后端（阿里云 ECS）
 
 1. 准备一台 ECS（推荐 Linux），安装 Docker 与 Docker Compose。
-2. 在服务器上放置项目代码，并准备真实短信配置文件：`sms-config/.env`
+2. 在服务器上放置项目代码，并准备部署配置文件：
+   - 复制 `deploy/.env.example` → `deploy/.env`（建议修改 `POSTGRES_PASSWORD`；默认端口 `HTTP_PORT=8080`）
+   - 复制 `sms-config/.env.example` → `sms-config/.env`（真实短信密钥不要提交到仓库）
    - 必填（Dypnsapi）：
      - `ALIYUN_ACCESS_KEY_ID`
      - `ALIYUN_ACCESS_KEY_SECRET`
@@ -16,11 +18,15 @@
    - 短信模版需包含参数：`code` 与 `min`
      - 模版示例：`您的验证码为${code}。尊敬的客户，以上验证码${min}分钟内有效，请注意保密，切勿告知他人。`
 3. 配置安全组放行端口：
-   - TCP `8080`（前端 Nginx 暴露端口；同时承载 `/api` 反代）
+   - TCP `HTTP_PORT`（默认 `8080`；前端 Nginx 暴露端口；同时承载 `/api` 反代）
+   - SSH `22` 建议只放行你的固定 IP
+   - 其他端口（`3000/5432/6379`）不要对公网开放
 4. 启动生产形态：
    - 在仓库根目录执行：`docker compose -f deploy/docker-compose.yml up -d --build`
 5. 健康检查：
-   - 访问：`http://<ECS公网IP>:8080/api/health`
+   - 访问：`http://<ECS公网IP>:<HTTP_PORT>/api/health`
+
+加固建议：见 `deploy/ECS-HARDENING.md`。
 
 ---
 
@@ -59,4 +65,3 @@ where type = 'sso_login'
 order by id desc
 limit 20;
 ```
-

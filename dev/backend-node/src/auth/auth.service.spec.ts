@@ -42,10 +42,11 @@ class FakeGuidGenerator extends GuidGenerator {
 class FakeVerificationCodeService extends VerificationCodeService {
   constructor() {
     const gateway: SmsGateway = { sendVerificationCode: async () => {} };
-    super(gateway);
+    // @ts-expect-error: redis not needed for this test
+    super(gateway, {});
   }
 
-  override validateCode(phone: string, code: string): void {
+  override async validateCode(phone: string, code: string): Promise<void> {
     // 测试中视任意 code 为有效，错误分支由专门 UT 覆盖
   }
 }

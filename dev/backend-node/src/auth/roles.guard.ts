@@ -1,6 +1,17 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AdminRole, ROLES_KEY } from './roles.decorator';
+
+type AdminAuthMode = 'strict' | 'legacy';
+
+const logger = new Logger('RolesGuard');
+let legacyModeWarned = false;
+
+function resolveAdminAuthMode(): AdminAuthMode {
+  const raw = (process.env.ADMIN_AUTH_MODE ?? '').trim().toLowerCase();
+  if (raw === 'legacy') return 'legacy';
+  return 'strict';
+}
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -20,18 +31,23 @@ export class RolesGuard implements CanActivate {
     const req = context.switchToHttp().getRequest();
     const user = req.user ?? {};
 
-    const headerRole = (req.headers?.['x-admin-role'] as string | undefined) ?? (req.headers?.['X-Admin-Role'] as string | undefined);
-    const role: string | undefined = (user.role as string | undefined) ?? headerRole;
+    const roles: string[] = Array.isArray(user.roles) ? user.roles.map((r: any) => String(r)) : [];
 
-    // 兼容模式：若当前环境尚未引入后台角色体系，则不做限制，以免影响已有使用方式。
-    if (!role) {
-      return true;
+    const mode = resolveAdminAuthMode();
+    if (mode === 'legacy') {
+      if (!legacyModeWarned) {
+        legacyModeWarned = true;
+        logger.warn('ADMIN_AUTH_MODE=legacy enabled: @Roles checks reduced to "any role" for emergency rollback');
+      }
+      // 回滚/应急模式：只要是“后台会话”（拥有任意角色）就放行，不再信任可伪造的请求头。
+      if (roles.length > 0) return true;
+      throw new ForbiddenException();
     }
 
-    if (requiredRoles.includes(role as AdminRole)) {
+    // 严格模式（默认）：基于服务端会话中的 roles 精确授权。
+    if (requiredRoles.some((r) => roles.includes(r))) {
       return true;
     }
-
     throw new ForbiddenException();
   }
 }

@@ -20,6 +20,8 @@ import { AliyunSmsGateway, ConsoleSmsGateway, HttpSmsGateway } from './sms-gatew
 import { MetricsController } from './metrics.controller';
 import { RateLimitService } from './rate-limit.service';
 import { RolesGuard } from './roles.guard';
+import { MetricsGuard } from './metrics.guard';
+import { AdminAppGuard } from './admin-app.guard';
 
 function hasAliyunSmsConfig(): boolean {
   const id = process.env.ALIYUN_ACCESS_KEY_ID || process.env.ALI_SMS_ACCESS_KEY_ID;
@@ -42,6 +44,8 @@ function hasAliyunSmsConfig(): boolean {
     LoginLogService,
     AuthGuard,
     RolesGuard,
+    MetricsGuard,
+    AdminAppGuard,
     {
       provide: 'SMS_GATEWAY',
       useClass:

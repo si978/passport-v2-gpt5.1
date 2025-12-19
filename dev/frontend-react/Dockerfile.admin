@@ -1,0 +1,34 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci
+
+COPY tsconfig*.json vite.config.ts vitest.config.ts vitest.setup.ts index.html ./
+COPY src ./src
+COPY public ./public
+
+# Build-time portal identity (separated from user portal)
+ARG VITE_APP_ID=admin
+ARG VITE_SSO_APP_ID=youlishe
+ARG VITE_SESSION_EVENT=sessionStatus
+ENV VITE_APP_ID=$VITE_APP_ID
+ENV VITE_SSO_APP_ID=$VITE_SSO_APP_ID
+ENV VITE_SESSION_EVENT=$VITE_SESSION_EVENT
+
+RUN npm run build
+
+FROM nginx:alpine AS runner
+
+RUN apk add --no-cache apache2-utils >/dev/null
+
+COPY nginx.admin.conf /etc/nginx/nginx.admin.conf
+COPY nginx.admin.basic.conf /etc/nginx/nginx.admin.basic.conf
+COPY docker-entrypoint.admin.sh /docker-entrypoint.admin.sh
+RUN chmod +x /docker-entrypoint.admin.sh
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+EXPOSE 80
+
+ENTRYPOINT ["/docker-entrypoint.admin.sh"]

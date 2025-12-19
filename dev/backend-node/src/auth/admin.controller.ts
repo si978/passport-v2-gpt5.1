@@ -5,13 +5,14 @@ import { MetricsService } from './metrics.service';
 import { AuditLogService, AuditLogType } from './audit-log.service';
 import { TokenService } from './token.service';
 import { AuthGuard } from './auth.guard';
+import { AdminAppGuard } from './admin-app.guard';
 import { AdminRole, Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 
 @ApiTags('admin')
 @ApiBearerAuth('access-token')
 @ApiSecurity('app-id')
-@UseGuards(AuthGuard, RolesGuard)
+@UseGuards(AuthGuard, RolesGuard, AdminAppGuard)
 @Controller('admin')
 export class AdminController {
   constructor(

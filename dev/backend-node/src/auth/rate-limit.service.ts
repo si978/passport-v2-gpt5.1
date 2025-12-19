@@ -1,28 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import Redis from 'ioredis';
 import { AuthErrorCode, AuthException } from './auth-error';
-
-interface WindowCounter {
-  windowStart: number;
-  count: number;
-}
 
 @Injectable()
 export class RateLimitService {
-  private readonly loginByIp = new Map<string, WindowCounter>();
-  private readonly loginByIpPhone = new Map<string, WindowCounter>();
-  private readonly refreshByIp = new Map<string, WindowCounter>();
+  constructor(@Inject('REDIS') private readonly redis: Redis) {}
 
-  private touch(map: Map<string, WindowCounter>, key: string, maxPerWindow: number, nowMs: number, windowMs: number) {
-    const current = map.get(key);
-    if (!current || nowMs - current.windowStart >= windowMs) {
-      map.set(key, { windowStart: nowMs, count: 1 });
-      return;
+  private readonly logger = new Logger(RateLimitService.name);
+
+  private async touch(key: string, maxPerWindow: number, windowSeconds: number): Promise<void> {
+    try {
+      const count = await this.redis.incr(key);
+      if (count === 1) {
+        await this.redis.expire(key, windowSeconds);
+      }
+      if (count > maxPerWindow) {
+        throw new AuthException(AuthErrorCode.ERR_CODE_TOO_FREQUENT, 'too many requests');
+      }
+    } catch (e) {
+      if (e instanceof AuthException) {
+        throw e;
+      }
+      this.logger.error(`rate limit redis error for key=${key}`, (e as Error).stack);
+      throw new AuthException(AuthErrorCode.ERR_INTERNAL, 'service temporarily unavailable');
     }
-    if (current.count >= maxPerWindow) {
-      throw new AuthException(AuthErrorCode.ERR_CODE_TOO_FREQUENT, 'too many requests');
-    }
-    current.count += 1;
-    map.set(key, current);
   }
 
   /**
@@ -30,16 +31,14 @@ export class RateLimitService {
    * - 按 IP：60 秒窗口内最多 60 次；
    * - 按 IP+手机号：60 秒窗口内最多 10 次。
    */
-  ensureLoginAllowed(ip?: string, phone?: string): void {
+  async ensureLoginAllowed(ip?: string, phone?: string): Promise<void> {
     if (!ip) return;
-    const nowMs = Date.now();
-    const windowMs = 60 * 1000;
+    const windowSeconds = 60;
 
-    this.touch(this.loginByIp, ip, 60, nowMs, windowMs);
+    await this.touch(`passport:rl:login:ip:${ip}`, 60, windowSeconds);
 
     if (phone) {
-      const key = `${ip}|${phone}`;
-      this.touch(this.loginByIpPhone, key, 10, nowMs, windowMs);
+      await this.touch(`passport:rl:login:ip_phone:${ip}:${phone}`, 10, windowSeconds);
     }
   }
 
@@ -47,12 +46,11 @@ export class RateLimitService {
    * Token 刷新接口限流：
    * - 按 IP：60 秒窗口内最多 120 次。
    */
-  ensureRefreshAllowed(ip?: string, guid?: string): void {
+  async ensureRefreshAllowed(ip?: string, guid?: string): Promise<void> {
     if (!ip) return;
-    const nowMs = Date.now();
-    const windowMs = 60 * 1000;
+    const windowSeconds = 60;
 
-    const key = guid ? `${ip}|${guid}` : ip;
-    this.touch(this.refreshByIp, key, 120, nowMs, windowMs);
+    const key = guid ? `passport:rl:refresh:ip_guid:${ip}:${guid}` : `passport:rl:refresh:ip:${ip}`;
+    await this.touch(key, 120, windowSeconds);
   }
 }
