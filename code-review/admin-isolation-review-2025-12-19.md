@@ -55,10 +55,14 @@
 - 新增管理后台 Nginx 配置：`dev/frontend-react/nginx.admin.conf`
 - 新增管理后台镜像构建：`dev/frontend-react/Dockerfile.admin`
   - build-time 设置 `VITE_APP_ID=admin`（可通过 compose build args 覆盖）
+- 补充：管理后台用户列表页按角色隐藏高危操作（仅 `OPERATOR` 显示封禁/解封按钮），避免只读运营误点：
+  - `dev/frontend-react/src/features/admin/UserListPage.tsx`
+  - `dev/frontend-react/src/features/admin/UserListPage.test.tsx`
 
 ### 3.3 部署（Docker Compose）
 
 - 新增 `admin-frontend` 服务与端口：`deploy/docker-compose.yml`
+- 补充：当管理后台启用 BasicAuth 时，健康检查改为探测 `/api/health`（避免 `/` 返回 401 导致误判 unhealthy）：`deploy/docker-compose.yml`
 - 新增 `deploy/.env.example` 支持：
   - `HTTP_PORT`（用户前端）
   - `ADMIN_PORT`（管理后台）

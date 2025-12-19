@@ -29,6 +29,7 @@ describe('UserListPage', () => {
   });
 
   it('sends ban request when clicking 封禁 按钮', async () => {
+    window.localStorage.setItem('admin_roles', JSON.stringify(['OPERATOR']));
     (apiClient.get as any).mockResolvedValueOnce({
       data: {
         users: [
@@ -50,5 +51,24 @@ describe('UserListPage', () => {
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledWith('/admin/users/G1/ban');
     });
+  });
+
+  it('hides ban buttons for SUPPORT role', async () => {
+    window.localStorage.setItem('admin_roles', JSON.stringify(['SUPPORT']));
+    (apiClient.get as any).mockResolvedValueOnce({
+      data: {
+        users: [
+          { guid: 'G1', phone: '13800138000', status: 'ACTIVE', account_source: 'phone' },
+        ],
+      },
+    });
+
+    render(<UserListPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('13800138000')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: '封禁' })).toBeNull();
   });
 });

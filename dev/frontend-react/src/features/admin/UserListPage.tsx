@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../../api/client';
 import { LogoutButton } from '../auth/LogoutButton';
+import { getAdminRoles } from '../auth/tokenStorage';
 
 type UserStatus = 'ACTIVE' | 'BANNED' | 'DELETED';
 
@@ -14,6 +15,7 @@ interface UserVm {
 export const UserListPage: React.FC = () => {
   const [users, setUsers] = useState<UserVm[]>([]);
   const [status, setStatus] = useState<UserStatus | 'ALL'>('ALL');
+  const canOperate = getAdminRoles().includes('OPERATOR');
 
   useEffect(() => {
     loadUsers(status, setUsers);
@@ -50,7 +52,8 @@ export const UserListPage: React.FC = () => {
               <td>{u.status}</td>
               <td>{u.account_source}</td>
               <td>
-                {u.status === 'ACTIVE' && (
+                {!canOperate && '-'}
+                {canOperate && u.status === 'ACTIVE' && (
                   <button
                     type="button"
                     onClick={() => handleBanToggle(u.guid, true, status, setUsers)}
@@ -58,7 +61,7 @@ export const UserListPage: React.FC = () => {
                     封禁
                   </button>
                 )}
-                {u.status === 'BANNED' && (
+                {canOperate && u.status === 'BANNED' && (
                   <button
                     type="button"
                     onClick={() => handleBanToggle(u.guid, false, status, setUsers)}
@@ -101,4 +104,3 @@ async function handleBanToggle(
     alert('操作失败，请稍后重试');
   }
 }
-
