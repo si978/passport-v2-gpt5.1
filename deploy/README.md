@@ -2,6 +2,11 @@
 
 本目录提供“前端 Nginx + 后端 NestJS + Postgres + Redis”的一键部署方案，并补齐空库初始化与健康检查。
 
+## 上线计划
+
+- 上线前/上线流程与回滚：`deploy/RELEASE-PLAN.md`
+- 一键上线脚本（可选）：`pwsh deploy/release.ps1 -Mode prod`（生产） / `pwsh deploy/release.ps1 -Mode smoke`（可上线级 smoke）
+
 ## 1) 生产/线上部署（真实短信）
 
 1. 配置基础环境变量（不要提交真实密钥到仓库）：
