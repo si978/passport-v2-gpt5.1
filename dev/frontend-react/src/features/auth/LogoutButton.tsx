@@ -2,7 +2,12 @@ import React from 'react';
 import { apiClient } from '../../api/client';
 import { clearSession, getAccessToken } from './tokenStorage';
 
-export const LogoutButton: React.FC = () => {
+export type LogoutButtonProps = {
+  className?: string;
+  label?: string;
+};
+
+export const LogoutButton: React.FC<LogoutButtonProps> = ({ className, label }) => {
   const handleLogout = async () => {
     const accessToken = getAccessToken();
     try {
@@ -16,8 +21,8 @@ export const LogoutButton: React.FC = () => {
   };
 
   return (
-    <button type="button" onClick={handleLogout}>
-      退出登录
+    <button type="button" onClick={handleLogout} className={className}>
+      {label ?? '退出登录'}
     </button>
   );
 };

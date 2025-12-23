@@ -6,6 +6,7 @@ import { UserActivityPage } from './features/admin/UserActivityPage';
 import { LogoutButton } from './features/auth/LogoutButton';
 import { RequireAuth } from './features/auth/RequireAuth';
 import { RequireAdmin } from './features/auth/RequireAdmin';
+import { AdminLayout } from './features/admin/AdminLayout';
 import { SessionBanner, SessionBannerState } from './features/sso/SessionBanner';
 import { handleSessionStatus } from './features/sso/ssoStartup';
 import { persistSession, clearSession } from './features/auth/tokenStorage';
@@ -79,25 +80,19 @@ export const App: React.FC = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<Home />} />
         <Route
-          path="/admin/users"
+          path="/admin"
           element={(
             <RequireAuth>
               <RequireAdmin>
-                <UserListPage />
+                <AdminLayout />
               </RequireAdmin>
             </RequireAuth>
           )}
-        />
-        <Route
-          path="/admin/activity"
-          element={(
-            <RequireAuth>
-              <RequireAdmin>
-                <UserActivityPage />
-              </RequireAdmin>
-            </RequireAuth>
-          )}
-        />
+        >
+          <Route index element={<Navigate to="/admin/users" replace />} />
+          <Route path="users" element={<UserListPage />} />
+          <Route path="activity" element={<UserActivityPage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

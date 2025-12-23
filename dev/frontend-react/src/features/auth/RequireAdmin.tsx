@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { isAdminSession } from './tokenStorage';
 
 interface RequireAdminProps {
@@ -7,9 +7,11 @@ interface RequireAdminProps {
 }
 
 export const RequireAdmin: React.FC<RequireAdminProps> = ({ children }) => {
+  const location = useLocation();
   const isAdmin = typeof window === 'undefined' ? false : isAdminSession();
   if (!isAdmin) {
-    return <Navigate to="/login" replace />;
+    const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`/login?redirect=${redirect}`} replace />;
   }
   return children;
 };

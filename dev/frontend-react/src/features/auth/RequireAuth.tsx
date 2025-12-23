@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { getAccessToken } from './tokenStorage';
 
 interface RequireAuthProps {
@@ -7,9 +7,11 @@ interface RequireAuthProps {
 }
 
 export const RequireAuth: React.FC<RequireAuthProps> = ({ children }) => {
+  const location = useLocation();
   const token = typeof window === 'undefined' ? null : getAccessToken();
   if (!token) {
-    return <Navigate to="/login" replace />;
+    const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`/login?redirect=${redirect}`} replace />;
   }
   return children;
 };

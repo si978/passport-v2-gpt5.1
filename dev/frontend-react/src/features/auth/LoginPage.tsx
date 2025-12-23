@@ -2,7 +2,18 @@ import React, { useState } from 'react';
 import { loginByPhone, sendCode } from '../../api/auth';
 import { appConfig } from '../../config/appConfig';
 import { getLoginErrorMessage, getSendCodeErrorMessage } from './errorMessages';
-import { persistSession } from './tokenStorage';
+import { isAdminSession, persistSession } from './tokenStorage';
+
+const sanitizeRedirectPath = (raw: string | null): string | null => {
+  if (!raw) return null;
+  const value = raw.trim();
+  if (!value.startsWith('/')) return null;
+  if (value.startsWith('//')) return null;
+  if (value.includes('://')) return null;
+  if (value.includes('\\')) return null;
+  if (value.toLowerCase().startsWith('/login')) return null;
+  return value;
+};
 
 export const LoginPage: React.FC = () => {
   const [phone, setPhone] = useState('');
@@ -65,7 +76,12 @@ export const LoginPage: React.FC = () => {
         roles: data.roles,
       });
       setMessage('登录成功');
-      window.location.href = '/';
+
+      const params = new URLSearchParams(window.location.search);
+      const redirect = sanitizeRedirectPath(params.get('redirect'));
+      const next =
+        redirect ?? (appConfig.portal === 'admin' && isAdminSession() ? '/admin/users' : '/');
+      window.location.href = next;
     } catch (err: any) {
       const code = err?.response?.data?.error_code as string | undefined;
       const friendly = getLoginErrorMessage(code);
