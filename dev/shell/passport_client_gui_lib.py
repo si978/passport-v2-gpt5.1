@@ -336,6 +336,7 @@ class PassportClientGui(tk.Tk):
         btns.grid(row=0, column=2, rowspan=4, padx=(12, 0))
         ttk.Button(btns, text="重新尝试自动登录", command=self.auto_startup_login).pack(fill="x")
         ttk.Button(btns, text="退出登录（全局）", command=self.logout_and_clear).pack(fill="x", pady=(8, 0))
+        ttk.Button(btns, text="打开星币商城", command=self.open_star_coins).pack(fill="x", pady=(8, 0))
 
         if self.allow_phone_login:
             login = ttk.LabelFrame(root, text="手机号登录（写入 session.dat）", padding=10)
@@ -694,6 +695,94 @@ class PassportClientGui(tk.Tk):
             messagebox.showinfo("已退出", "已退出登录（本地 session.dat 已清理）")
 
         self._run_async(work, done)
+
+    def open_star_coins(self) -> None:
+        """打开星币商城 H5 页面（WebView）"""
+        if not self.current_access_token:
+            messagebox.showwarning("未登录", "请先登录后再打开星币商城")
+            return
+
+        star_coins_base = os.environ.get("STAR_COINS_URL", "http://localhost/user/tasks")
+        url = f"{star_coins_base}?access_token={self.current_access_token}"
+        
+        self._append(f"[star-coins] opening: {url}")
+        
+        # JS API 供 Web 端调用
+        gui_self = self
+        class StarCoinsApi:
+            def minimize(self):
+                pass  # WebView 内不支持最小化主窗口
+            
+            def close(self):
+                pass  # 关闭由 WebView 自身处理
+            
+            def logout(self):
+                """退出登录（兼容旧版）"""
+                gui_self.after(0, gui_self.logout_and_clear)
+            
+            def saveSession(self, data: dict):
+                """保存 session（Web 端登录成功后调用）"""
+                try:
+                    guid = data.get("guid", "")
+                    phone = data.get("phone", "")
+                    refresh_token = data.get("refreshToken", "")
+                    expires_at = data.get("expiresAt", "")
+                    
+                    if not guid or not refresh_token:
+                        gui_self._append("[saveSession] Missing guid or refreshToken")
+                        return
+                    
+                    payload = {
+                        "guid": guid,
+                        "phone": phone,
+                        "user_type": "user",
+                        "refresh_token": refresh_token,
+                        "created_at": now_iso(),
+                        "expires_at": expires_at,
+                    }
+                    gui_self._store().write(payload)
+                    gui_self._append(f"[saveSession] Session saved for {phone}")
+                    # 刷新主窗口状态
+                    gui_self.after(100, gui_self.auto_startup_login)
+                except Exception as e:
+                    gui_self._append(f"[saveSession] Error: {e}")
+            
+            def clearSession(self):
+                """删除 session（Web 端退出登录后调用）"""
+                gui_self.after(0, gui_self.logout_and_clear)
+        
+        # 使用 webview 在端内展示
+        try:
+            import webview
+            self._append("[star-coins] using pywebview")
+            
+            def start_webview():
+                try:
+                    webview.create_window(
+                        '游利社星币商城',
+                        url,
+                        width=1000,
+                        height=750,
+                        resizable=True,
+                        frameless=True,
+                        min_size=(800, 600),
+                        js_api=StarCoinsApi(),
+                    )
+                    webview.start(private_mode=False)
+                except Exception as e:
+                    self.after(0, lambda: self._append(f"[star-coins] webview error: {e}"))
+                    self.after(0, lambda: self._fallback_browser(url))
+            
+            threading.Thread(target=start_webview, daemon=True).start()
+        except ImportError:
+            self._append("[star-coins] pywebview not installed, using browser")
+            self._fallback_browser(url)
+    
+    def _fallback_browser(self, url: str) -> None:
+        """使用浏览器打开"""
+        import webbrowser
+        webbrowser.open(url)
+        self._append("[star-coins] opened in browser")
 
 
 def run_client(*, app_id: str, title: str, allow_phone_login: bool = True) -> int:
