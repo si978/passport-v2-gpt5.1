@@ -59,14 +59,20 @@ class StubHandler(BaseHTTPRequestHandler):
             return _send_json(self, 429, {"code": "ERR_CODE_TOO_FREQUENT"})
         if state.mode == "internal":
             return _send_json(self, 500, {"code": "ERR_INTERNAL"})
-        # success
+        # success - 返回完整的会话字段
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(days=2)
         return _send_json(
             self,
             200,
             {
                 "guid": state.guid,
+                "phone": "13800138000",
+                "user_type": 1,
                 "refresh_token": state.refresh_token,
-                "refresh_token_expires_at": "2026-01-01T00:00:00Z",
+                "created_at": now.isoformat().replace("+00:00", "Z"),
+                "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
             },
         )
 
@@ -83,14 +89,20 @@ class StubHandler(BaseHTTPRequestHandler):
             return _send_json(self, 401, {"code": "ERR_ACCESS_INVALID"})
         if state.mode == "internal":
             return _send_json(self, 500, {"code": "ERR_INTERNAL"})
-        # success
+        # success - 返回完整的会话字段
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(days=2)
         return _send_json(
             self,
             200,
             {
                 "guid": state.guid,
+                "phone": "13800138000",
+                "user_type": 1,
                 "refresh_token": state.refresh_token,
-                "refresh_token_expires_at": "2026-01-01T00:00:00Z",
+                "created_at": now.isoformat().replace("+00:00", "Z"),
+                "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
             },
         )
 

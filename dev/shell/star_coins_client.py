@@ -179,10 +179,10 @@ def get_config():
     config_path = os.environ.get("PASSPORT_CLIENT_CONFIG") or default_config_path()
     cfg = load_config(config_path)
     
-    base_url = os.environ.get("PASSPORT_BASE_URL") or cfg.get("base_url") or "http://127.0.0.1:8080"
+    base_url = os.environ.get("PASSPORT_BASE_URL") or cfg.get("base_url") or "https://passport.dingnew.top"
     session_path = os.environ.get("PASSPORT_SESSION_PATH") or cfg.get("session_path") or default_session_path()
     use_dpapi = cfg.get("use_dpapi", True)
-    star_coins_url = os.environ.get("STAR_COINS_URL") or "http://localhost/user/tasks"
+    star_coins_url = os.environ.get("STAR_COINS_URL") or "https://star.dingnew.top/client/tasks"
     
     return {
         "base_url": base_url,
@@ -561,8 +561,8 @@ class StarCoinsApp:
 def main() -> int:
     # EXE 环境设置默认值
     if getattr(sys, "frozen", False):
-        os.environ.setdefault("PASSPORT_BASE_URL", "http://182.92.92.228:8081")
-        os.environ.setdefault("STAR_COINS_URL", "http://182.92.92.228:8082/user/tasks")
+        os.environ.setdefault("PASSPORT_BASE_URL", "https://passport.dingnew.top")
+        os.environ.setdefault("STAR_COINS_URL", "https://star.dingnew.top/client/tasks")
     
     app = StarCoinsApp()
     app.run()

@@ -23,18 +23,30 @@ class StubShellApp(ShellApp):
         self.refresh_called = False
 
     def _login_stub(self, phone: str, code: str) -> Dict[str, Any]:
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(days=2)
         return {
             "guid": "G-STUB",
+            "phone": phone,
+            "user_type": 1,
             "refresh_token": "R-STUB",
-            "refresh_token_expires_at": "2026-01-01T00:00:00Z",
+            "created_at": now.isoformat().replace("+00:00", "Z"),
+            "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
         }
 
     def _refresh_stub(self, guid: str, refresh_token: str) -> Dict[str, Any]:
         self.refresh_called = True
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(days=2)
         return {
             "guid": guid,
+            "phone": "13800138000",
+            "user_type": 1,
             "refresh_token": refresh_token,
-            "refresh_token_expires_at": "2026-01-01T00:00:00Z",
+            "created_at": now.isoformat().replace("+00:00", "Z"),
+            "expires_at": expires_at.isoformat().replace("+00:00", "Z"),
         }
 
     def _logout_stub(self, access_token=None):
